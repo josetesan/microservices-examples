@@ -2,14 +2,21 @@
 
 set -e
 
-export DOCKER_HOST_IP=$(boot2docker ip)
+. ./set-env.sh
+docker-compose stop
+docker-compose rm -v --force
 
-docker-compose up -d --no-recreate rabbitmq mongodb
+docker-compose up -d rabbitmq mongodb
+
+cd eureka-server
+./gradlew build
+
+cd ../zipkin-server
+./gradlew build
+
+cd ..
 
 cd spring-boot-restful-service
-
-export SPRING_RABBITMQ_HOST=${DOCKER_HOST_IP?}
-export SPRING_DATA_MONGODB_URI=mongodb://${DOCKER_HOST_IP?}/userregistration
 
 ./gradlew build
 
@@ -19,25 +26,18 @@ docker-compose up -d restfulservice
 
 echo -n waiting for restfulservice to start..
 
-set +e
 
-while [[ true ]]; do
-        nc -z -w 4 ${DOCKER_HOST_IP?} 8081 
-        if [[ "$?" -eq "0" ]]; then
-                echo connected
-                break
-        fi
-        echo -n . 
-        sleep 1
-done
+echo Launching RESTful service in Docker container
+echo This takes about 30 seconds...
 
-set -e
+./wait-for-services.sh ${DOCKER_HOST_IP?} /health 8081
+./wait-for-services.sh ${DOCKER_HOST_IP?} /eureka/apps/REGISTRATION-SERVICE 8761
 
 cd spring-boot-webapp
 
 export USER_REGISTRATION_URL=http://${DOCKER_HOST_IP?}:8081/user
 
+./gradlew build
 
-
-mvn package
-
+docker-compose stop
+docker-compose rm -v --force

@@ -1,18 +1,18 @@
 package net.chrisrichardson.microservices.restfulspringboot
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import net.chrisrichardson.microservices.restfulspringboot.backend.ScalaObjectMapper
+import org.springframework.amqp.core.TopicExchange
+import org.springframework.amqp.rabbit.connection.ConnectionFactory
+import org.springframework.amqp.rabbit.core.RabbitTemplate
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter
+import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.cloud.netflix.eureka.EnableEurekaClient
 import org.springframework.context.annotation._
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration
-import org.springframework.amqp.core.TopicExchange
-import org.springframework.amqp.rabbit.core.RabbitTemplate
-import org.springframework.amqp.rabbit.connection.ConnectionFactory
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter
-import net.chrisrichardson.microservices.restfulspringboot.backend.ScalaObjectMapper
+import org.springframework.cloud.sleuth.sampler.AlwaysSampler
+import org.springframework.cloud.sleuth.Sampler
 
-@Configuration
-@EnableAutoConfiguration
-@ComponentScan
-@Import(Array(classOf[EurekaClientConfiguration]))
+@SpringBootApplication
 class UserRegistrationConfiguration {
 
   import MessagingNames._
@@ -22,7 +22,7 @@ class UserRegistrationConfiguration {
   def scalaObjectMapper() = new ScalaObjectMapper
 
   @Bean
-  def rabbitTemplate(connectionFactory : ConnectionFactory) = {
+  def rabbitTemplate(connectionFactory : ConnectionFactory, objectMapper : ObjectMapper) = {
     val template = new RabbitTemplate(connectionFactory)
     val jsonConverter = new Jackson2JsonMessageConverter
     jsonConverter.setJsonObjectMapper(scalaObjectMapper())
@@ -33,6 +33,8 @@ class UserRegistrationConfiguration {
   @Bean
   def userRegistrationsExchange() = new TopicExchange(exchangeName)
 
+  @Bean
+  def sampler() : Sampler = new AlwaysSampler()
 
 }
 
